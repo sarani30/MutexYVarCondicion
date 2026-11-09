@@ -387,3 +387,75 @@ int main() {
     pthread_mutex_destroy(&mutex);
     exit(0);
 }
+
+//EJERCICIO 9
+
+/*9. ¿Qu´e ocurrir´ıa en la soluci´on planteada para el ejercicio 3 de las trans
+parencias del tema 3 si se eliminan en las funciones fhiloA y fhiloB
+la funci´on pthread_mutex_unlock que precede inmediatamente al primer printf y la funci´on pthread_mutex_lock
+que precede inmediatamente al segundo printf?
+
+
+SOLUCIÓN:Perderíamos la concurrencia porque ya no permitiría que varios hilos de tipo A o B accedieran a los datos
+simultáneamente
+*/
+
+//EJERCICIO 10
+
+/*10. En las transparencias del tema 3 se plantea una posible soluci´on al problema
+del productor-consumidor con buffer limitado mediante mutex y variables
+de condici´on. A partir de ella, responde a las preguntas que aparecen a
+continuaci´on:
+
+(a) ¿Se puede sustituir en la funci´on Productor la sentencia while por un
+if? ¿Y en la funci´on Consumidor?
+
+SOLUCIÓN: No, porque de normal si varios hilos pueden hacer cierta la condición asociada a la variable de condición,
+ha de ir un while
+
+(b) ¿Ser´ıa necesario sustituir en la funci´on Productor la funci´on
+pthread_cond_signal(&novacio); por lo siguiente: if (n elementos==1) pthread cond signal(&no vacio);
+
+SOLUCIÓN: No es necesario porque las variables de condición no tienen memoria, si estuviera vacía de por sí, no se ejecutaría.
+
+(c) ¿Qu´e cambios habr´ıa que hacer en el c´odigo de las transparencias para
+que hubiese dos hilos productores y un hilo consumidor?
+
+SOLUCIÓN:
+
+// Ejemplo en main:
+pthread_t th_prod1, th_prod2, th_cons;
+
+pthread_create(&th_prod1, NULL, Productor, NULL);
+pthread_create(&th_prod2, NULL, Productor, NULL);
+pthread_create(&th_cons,  NULL, Consumidor, NULL);
+
+pthread_join(th_prod1, NULL);
+pthread_join(th_prod2, NULL);
+pthread_join(th_cons,  NULL);
+
+Con dos productores independientes, cada uno tendría su propia variable pos local inicializada a 0, por lo que ambos
+escribirían sobre la misma casilla del buffer circular machacando datos.
+
+// Variable global añadida
+int pos_in = 0;
+
+// Dentro de Productor:
+buffer[pos_in] = dato;
+pos_in = (pos_in + 1) % MAX_BUFFER;
+
+Si la constante DATOS_A_PRODUCIR representa el total de elementos a procesar, se debe ajustar el bucle de cada productor
+para que entre los dos generen esa cantidad (por ejemplo, haciendo que cada uno produzca DATOS_A_PRODUCIR / 2 O
+pasándoles exactamente los datos a producir al crear el hilo como argumento.
+
+(d) ¿Se podr´ıa sustituir en la funci´on Productor del c´odigo del apartado
+anterior la sentencia while por un if? ¿Y en la funci´on Consumidor?
+
+SOLUCIÓN: En el Productor (2 hilos): Teóricamente SÍ funcionaría un if. Al usarse signal, el consumidor solo despierta
+a un único productor cuando libera un espacio, por lo que no hay competencia entre productores para ocupar ese hueco.
+
+En el Consumidor (1 hilo): Teóricamente SÍ funcionaría un if. Al ser el único consumidor que existe en el sistema, no
+hay otro hilo que pueda "robarle" el dato recién producido mientras intenta obtener el mutex.
+
+Sin embargo, siempre es mejora un while.
+*/
