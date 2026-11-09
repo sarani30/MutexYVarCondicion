@@ -297,3 +297,93 @@ Y los elementos del vector se calcular´an de manera aleatoria.
 Para realizar el ejercicio puedes tomar como referencia el ejercicio 13 de las
 transparencias del tema 2. */
 
+//Anotaciones:
+
+//sumar elementos de un vector
+
+//crear número determinado de hilos
+//repartir los componentes enre los hilos y hacer sumas parciales
+//parametros de la funcion -> indice inical y final del subvector a sumar
+//acumular la suma de los elementos del vector en una variable compartida
+
+//tamaño del vector y el número de hilos constante
+//elementos calculados de manera aleatoria
+
+#include <pthread.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <time.h>
+
+pthread_mutex_t mutex; //mutex que controla el acceso a la SC
+#define NTHREADS 4
+#define TAMANYO_VECTOR 8
+
+int v[TAMANYO_VECTOR];
+int suma = 0;
+
+typedef struct {
+    int ini;
+    int fin;
+} indices;
+
+void *hilo(void *arg) {
+
+    indices *p = (indices *) arg;
+
+    int suma_parcial = 0; // Acumulador local (fuera del mutex)
+
+    // Cómputo local sin bloqueo
+    for (int i = p->ini; i <= p->fin; i++) {
+        suma_parcial += v[i];
+    }
+
+    // Sección crítica: se añade la suma parcial una única vez por hilo
+    pthread_mutex_lock(&mutex);
+    suma += suma_parcial;
+    pthread_mutex_unlock(&mutex);
+
+    pthread_exit(NULL);
+}
+
+int main() {
+
+    int i;
+    time_t t;
+    pthread_t hilos[NTHREADS];
+    int dim_subvector = TAMANYO_VECTOR / NTHREADS;
+    indices ind[NTHREADS];
+
+    pthread_mutex_init(&mutex,NULL);
+
+    //inicializar el vector con números random
+    srandom(time(&t));
+    printf("VECTOR\n");
+    for (i=0;i<TAMANYO_VECTOR;i++)
+    {
+        v[i]=random()%10;
+        printf("V[%d]=%d\n",i,v[i]);
+    }
+    printf("\n");
+
+    //crear hilos
+    for (i = 0; i < NTHREADS; i++) {
+
+        ind[i].ini = i * dim_subvector;
+
+        if (i != (NTHREADS - 1)) ind[i].fin = ind[i].ini + dim_subvector - 1;
+        else ind[i].fin = TAMANYO_VECTOR - 1;
+
+        pthread_create(&hilos[i], NULL, hilo, (void *) &ind[i]);
+    }
+
+    //ejecución hilos
+    for (i = 0; i < NTHREADS; i++) {
+        pthread_join(hilos[i], NULL);
+    }
+
+    printf("La suma es %d\n", suma);
+
+    pthread_mutex_destroy(&mutex);
+    exit(0);
+}
