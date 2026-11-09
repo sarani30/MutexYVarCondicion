@@ -1,94 +1,65 @@
-#include <pthread.h>         
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <time.h>
+//EJERCICIOS SOBRE MUTEX Y VARIABLES DE CONDICIÓN
 
-int num_hilos;
-int inicio;
-int fin;
-int turno_actual;
+//EJERCICIO 1
 
-pthread_mutex_t mutex;
-pthread_cond_t *cond_hilos;
+/*1. ¿Para qu´e sirve un mutex? ¿Y una variable de condici´on?
+ *
+ * Un mutex sirve para solucionar los problemas de ejecución concurrente debido a condiciones de carrera,
+ * donde varios hilos hacen uso a la vez de la misma variable compartida, lo cual puede hacer variar
+ * el resultado final en cada ejecución. Para ello, se emplea la exclusión mutua en la sección crítica del
+ * código donde se modifica la variable global.
+*Se emplea para obtener acceso exclusivo a recursos compartidos y para
+“serializar” el acceso a la SC en exclusión mutua
+♦ Sólo un hilo puede tener acceso simultáneamente al mutex
+ *
+ * Las variables de condición se emplean para permitir a uno o varios hilos suspender su ejecución (dormirse)
+ * hasta que otro hilo les notifique que se ha cumplido
+ * una condición lógica o evento determinado en el estado compartido. Por tanto, pausan un hilo hasta que un evento global
+ * finalice y despertarlos a todos simultáneamente.
+ */
 
-void* cuenta_hilos(void* arg) {
-int id = *((int*) arg);
+//EJERCICIO 2
 
-for (int valor = inicio + id; valor <= fin; valor += num_hilos) {
+/*2. Responde a las siguientes preguntas (sin necesidad de justificarlas):
+(a) ¿Se bloquea un hilo cuando ´este adquiere un mutex (con una operaci´on
+lock)?
 
-		pthread_mutex_lock(&mutex);
-while (turno_actual != valor) {
-		pthread_cond_wait(&cond_hilos[id], &mutex);
-} 
+SOLUCIÓN: No. Cuando un hilo ejecuta una operación lock y el mutex está ibre o desbloqueado
+, el hilo entra dentro del cerrojo y continúa con su ejecución. El bloqueo solo ocurre cuando otro
+hilo que no tiene el mutex trata de entrar dentro de él.
 
-printf("El hilo %d imprime este valor %d\n", id, valor);
-turno_actual++;
-int siguiente_hilo = (id + 1) % num_hilos;
-pthread_cond_signal(&cond_hilos[siguiente_hilo]); 
+(b) ¿Se bloquea un hilo cuando intenta (con una operaci´on lock) bloquear
+un mutex que ya est´a bloqueado?
 
-		pthread_mutex_unlock(&mutex);		
-}
-pthread_exit(NULL);
-}
+SOLUCIÓN: Sí, cuando un hilo ya está dentro del mútex, se bloquea hasta que finaliza su ejecución en la
+sección crítica y realiza una operación unlock. Por tanto, el mutex bloquea al resto de hilos hasta que se
+desbloquea, par evitar condiciones de carrera.
 
-int main(int argc, char * argv[]) {
+(c) ¿Se bloquea siempre un hilo cuando ejecuta una operaci´on wait sobre
+una variable de condici´on?
 
-    	if (argc != 4) {
-     	   	perror("Error: Faltan argumentos. Uso: <num_hilos> <inicio> <fin>");
-  		exit(-1);
-   	 }
+SOLUCIÓN: siempre que llega a entrar a esa operación, el hilo libera el mutex, suspende su ejecución
+lo lleva a la cola de la variable de condición, en estado bloqueado hasta que otro hilo invoque la señal signal
+o broadcast.
 
-    	num_hilos = atoi(argv[1]);
-    	inicio = atoi(argv[2]);
-   	fin = atoi(argv[3]);
+(d) ¿Tiene alg´un efecto una operaci´on signal si no hay hilos esperando en
+la cola variable de condici´on sobre la que se aplica?
 
-	if (num_hilos <= 0) { 
-perror("Error: El numero de hilos debe ser mayor que 0"); exit(-1); 
-} 
+SOLUCIÓN: Si no hay hilos esperando en la variable condición, se descarta de inmediato sin alterar el estado del sistema
+, es decir, se ignora totalmente la operación.
+*/
 
-int total_elementos = (fin - inicio) + 1; 
-if (fin < inicio) { 
-perror("El limite final debe ser mayor al inicial"); 
-exit(-1); 
-} 
-if (total_elementos <= num_hilos) { 
-perror("Error: El numero de elementos a imprimir debe ser mayor que el numero de hilos"); 
-exit(-1); 
-} 
+//EJERCICIO 3
 
-turno_actual = inicio;
-pthread_t * hilos = malloc(num_hilos * sizeof(pthread_t)); 
-int* ids = malloc(num_hilos * sizeof(int));
-pthread_mutex_init(&mutex, NULL); 
-cond_hilos = malloc(num_hilos * sizeof(pthread_cond_t));
-if (cond_hilos == NULL) { 
-perror("Error al asignar memoria con malloc"); 
-exit(-1); 
-} 
-	for ( int i = 0; i < num_hilos; i++) {
-		pthread_cond_init(&cond_hilos[i], NULL);
-}
-for (int i = 0; i < num_hilos; i++) { 
-ids[i] = i; 
-if (pthread_create(&hilos[i], NULL, cuenta_hilos, &ids[i]) != 0) { 
-perror("Error al crear hilo con pthread_create"); 
-exit(-1); 
-} 
-}
-for (int i = 0; i < num_hilos; i++) { 
-if (pthread_join(hilos[i], NULL) != 0) { 
-perror("Error al esperar al hilo con pthread_join"); 
-exit(-1); 
-} 
-}
+/*3. Lasoluci´on dada en las transparencias 39 y 40 del tema 3 resuelve el problema
+que se plantea en el ejemplo de las transparencias 11 y 12.
 
-printf("\n[Hilo Principal] Todos los hilos han terminado correctamente.\n"); 
-	free(hilos);
-free(cond_hilos);
-free(ids);
-return 0; 
+(a) ¿Qu´eocurre si ponemos en el c´odigo que ejecutan los hilos subordinados,
+hilo1 e hilo2, la funci´on pthread_mutex_unlock detr´as de sleep?
 
-	
-}
+SOLUCIÓN:
+
+(b) ¿Qu´e ocurre si extraemos las funciones pthread_mutex_lock y pthread_mutex_unlock fuera del bucle for?
+
+
+*/
