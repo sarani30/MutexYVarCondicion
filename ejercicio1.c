@@ -57,9 +57,140 @@ que se plantea en el ejemplo de las transparencias 11 y 12.
 (a) ¿Qu´eocurre si ponemos en el c´odigo que ejecutan los hilos subordinados,
 hilo1 e hilo2, la funci´on pthread_mutex_unlock detr´as de sleep?
 
-SOLUCIÓN:
+SOLUCIÓN:Si sleep está antes del unlock, sería un fallo grave de eficiencia, puesto que si el hilo duerme mientras tiene
+el cerrojo del mutex, ningún otro hilo podrá entrar en la sección crítica durante el tiempo que esté bloqueado. Destruiría
+la concurrencia y gastaría ciclos de CPU innecesarios.
 
 (b) ¿Qu´e ocurre si extraemos las funciones pthread_mutex_lock y pthread_mutex_unlock fuera del bucle for?
 
+SOLUCIÓN: Si lock y unlock están encerrando un bucle for, no habría concurrencia de ningún tipo, puesto que hilo no desbloquearía
+el mutex hasta que finalizara todas las iteraciones del bucle for. Entonces, ningún otro hilo podría ir intercalando operaciones.
 
 */
+
+//EJERCICIO 4
+
+/*¿Por qu´e la funci´on pthread_cond_wait del est´andar POSIX requiere un
+mutex como segundo argumento?
+ *
+ *Lo requiere porque al llevar el hilo en ejecución a la cola de la variable de condición, se libera el mutex y por tanto, otro
+ *hilo puede ocupar el cerrojo.*/
+
+//EJERCICIO 5
+
+/* 5. Sea el siguiente fragmento de c´odigo que ejecuta un hilo determinado:
+
+  1: pthread_mutex_lock(&mutex);
+  2: while (ocupado == true)
+  3:    pthread_cond_wait(&cond, &mutex);
+  4: ocupado = true;
+  5: pthread_mutex_unlock(&mutex);
+
+Y sea el siguiente fragmento de c´odigo que permite desbloquear al hilo que
+ejecute el c´odigo anterior:
+
+  6: pthread_mutex_lock(&mutex);
+  7: ocupado = false;
+  8: pthread_cond_signal(&cond);
+  9: pthread_mutex_unlock(&mutex);
+
+Supongamos que en un instante determinado el valor de la variable ocupado
+es true y que en el sistema se est´an ejecutando dos hilos que denotamos por
+A y B, respectivamente. Indicar de manera justificada si ser´ıan posibles y
+por qu´e las siguientes secuencias de ejecuci´on, donde Xi denota que el hilo
+X ejecuta la instrucci´on i.
+
+    (a) A1 A2 A3 B6 B7 B8 A2 A4 A5 B9
+    (b) A1 B6 A2 A3 B7 B8 B9 A4 A5
+    (c) A1 A2 B6 A3 B7 B8 B9 A2 A4 A5
+    (d) B6 A1 B7 B8 B9 A2 A4 A5
+    (e) B6 B7 A1 A2 A4 A5 B8 B9
+
+Ninguna de las secuencias propuestas es posible. A continuación se justifica minuciosamente el motivo de la imposibilidad de cada una de ellas:
+
+---
+
+### (a) `A1 A2 A3 B6 B7 B8 A2 A4 A5 B9` — **NO ES POSIBLE**
+
+* **Razón:** En `A3`, el hilo A ejecuta `pthread_cond_wait`, lo que libera el mutex y suspende a A. El hilo B entra
+* en la sección crítica con `B6`, cambia la variable en `B7` y emite la señal en `B8`.
+
+
+* **Fallo:** La llamada a `pthread_cond_signal` (`B8`) despierta al hilo A, pero **para que `pthread_cond_wait` (`A3`)
+* finalice y el hilo A vuelva a evaluar la condición en `A2`, A debe volver a adquirir el mutex**. Como el hilo B
+* todavía posee el mutex (no ha ejecutado `B9`), el hilo A no puede reanudar la ejecución en `A2` antes de `B9`.
+
+
+
+---
+
+### (b) `A1 B6 A2 A3 B7 B8 B9 A4 A5` — **NO ES POSIBLE**
+
+* **Razón:** En `A1`, el hilo A adquiere el mutex.
+
+
+* **Fallo:** Inmediatamente después se pretende que el hilo B ejecute `B6` (`pthread_mutex_lock`). Dado que el mutex se
+* encuentra bloqueado por A y este aún no lo ha liberado (no ha ejecutado `A3`), **el hilo B queda bloqueado en la
+* instrucción `B6**` y no puede avanzar a las instrucciones `B7`, `B8` o `B9` hasta que A libere el cerrojo.
+
+
+
+---
+
+### (c) `A1 A2 B6 A3 B7 B8 B9 A2 A4 A5` — **NO ES POSIBLE**
+
+* **Razón:** El hilo A ejecuta `A1` (adquiere el mutex) y `A2` (evalúa `ocupado == true`).
+
+
+* **Fallo:** En este punto, el hilo A todavía no ha ejecutado `A3` (que es la instrucción donde se libera el mutex
+* al entrar en espera). Por tanto, cuando el hilo B intenta ejecutar `B6` (`pthread_mutex_lock`), **se bloquea en `B6`
+* por exclusión mutua** y no puede intercalarse antes de `A3`.
+
+
+
+---
+
+### (d) `B6 A1 B7 B8 B9 A2 A4 A5` — **NO ES POSIBLE**
+
+* **Razón:** El hilo B ejecuta `B6` y adquiere el mutex.
+
+
+* **Fallo:** Al estar el mutex retenido por B, el hilo A no puede ejecutar `A1` (`pthread_mutex_lock`); **el hilo A
+* queda bloqueado en la propia instrucción `A1**` hasta que B ejecute `B9` (`pthread_mutex_unlock`). Por lo tanto,
+* `A1` no puede suceder entre `B6` y `B9`.
+
+
+
+---
+
+### (e) `B6 B7 A1 A2 A4 A5 B8 B9` — **NO ES POSIBLE**
+
+* **Razón:** El hilo B ejecuta `B6` y `B7`, manteniendo el mutex bloqueado en todo momento.
+
+
+* **Fallo:** El hilo A no puede ejecutar `A1` ni avanzar a `A2`, `A4` o `A5` dentro de la sección crítica de B.
+* Al estar el mutex ocupado por B, **el hilo A se bloquea en `A1**` y no podrá ejecutar ninguna instrucción posterior
+* hasta que B libere el mutex con `B9`.
+
+
+
+---
+
+(Nota: Para que una secuencia fuera válida, el hilo A debería poder ejecutar `A2` únicamente **después** de
+que B ejecute `B9` (por ejemplo: `A1 A2 A3 B6 B7 B8 B9 A2 A4 A5`), o bien B debería ejecutar de principio a
+fin su bloque antes de que A intente entrar).
+*/
+
+//EJERCICIO 6
+
+/*6. En el ejercicio 2 de las transparencias del tema 3 se plantean dos posibles
+soluciones para dicho ejercicio. La primera es correcta y la segunda, no.
+¿Por qu´e no es correcta la segunda soluci´on?
+
+SOLUCIÓN: No es correcta porque no hay ninguna condición dentro del while que evalúa si el hilo debe de esperar
+en la variable de condición. Falta pthread_cond_wait();
+*/
+
+//EJERCICIO 7
+
+/* */
