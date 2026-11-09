@@ -193,4 +193,91 @@ en la variable de condición. Falta pthread_cond_wait();
 
 //EJERCICIO 7
 
-/* */
+/* 7. Sea el siguiente programa escrito en C:
+        #include <pthread.h>
+        #include <stdio.h>
+        #include <stdlib.h>
+        #define NTHREADS 4
+        int contador=0;
+
+    void *hilo(void *arg)
+    {
+        int i;
+        i = *(int *) arg;
+        contador = contador + i;
+        printf("Hilo %lu, contador = %u\n",pthread_self(),contador);
+        pthread_exit(0);
+    }
+    int main()
+    {
+
+        int i;
+        int v[NTHREADS];
+        pthread_t thread[NTHREADS]; //vector para definir los hilos
+        for (i=0;i<NTHREADS;i++)
+        {   v[i] = i;
+            pthread_create(&thread[i], NULL, hilo, (void *)&v[i]);
+            pthread_join(thread[i],NULL);
+        }
+        printf("Hilo principal, contador = %d\n",contador);
+        pthread_exit (0);
+    }
+
+(a) Indica, de manera justificada, lo que muestra por la pantalla tanto la
+hebra principal como cada uno de los hilos subordinados.
+
+SOLUCIÓN:
+    Hilo 0, contador = 0
+    Hilo 1, contador = 1
+    Hilo 2, contador = 3
+    Hilo 3, contador = 6
+    Hilo principal, contador = 6
+
+(b) Modifica este c´odigo para que todos los hilos puedan ejecutarse en par
+alelo (concurrentemente) y acceder a la variable contador de manera
+correcta.
+
+
+SOLUCIÓN:*/
+
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#define NTHREADS 4
+pthread_mutex_t mutex;
+int contador=0;
+
+void *hilo(void *arg)
+{
+    int i;
+    i = *(int *) arg;
+
+    pthread_mutex_lock(&mutex);
+    contador = contador + i;
+    printf("Hilo %lu, contador = %u\n",pthread_self(),contador);
+    pthread_mutex_unlock(&mutex);
+
+    pthread_exit(0);
+}
+int main()
+{
+
+    int i;
+    int v[NTHREADS];
+    pthread_t thread[NTHREADS]; //vector para definir los hilos
+
+    pthread_mutex_init(&mutex,NULL);
+
+    for (i=0;i<NTHREADS;i++)
+    {   v[i] = i;
+        pthread_create(&thread[i], NULL, hilo, (void *)&v[i]);
+    }
+
+    for (i = 0; i < NTHREADS; i++) {
+        pthread_join(thread[i], NULL);
+    }
+    printf("Hilo principal, contador = %d\n",contador);
+
+    pthread_mutex_destroy(&mutex);
+    pthread_exit (0);
+}
