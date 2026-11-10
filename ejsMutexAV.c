@@ -514,3 +514,232 @@ entre hilo1 e hilo2
 */
 
 //EJERCICIO 12
+
+/*12. Se pretende que los hilos del c´odigo que aparece a continuaci´on se sincronicen
+de tal forma que se imprima en primer lugar la primera fila de la matriz,
+a continuaci´on la segunda, despu´es la tercera y as´ı sucesivamente hasta la
+´ultima fila de la matriz. ¿Garantiza el programa que las filas de la matriz se
+impriman en el orden especificado? En caso negativo, ¿qu´e modificaciones
+realizar´ıas en el c´odigo para garantizar dicho orden?
+Justifica la respuesta o respuestas.
+
+    #include <pthread.h>
+    #include <stdio.h>
+    #include <unistd.h>
+    #include <stdlib.h>
+
+    #define MAX_DIM 10
+
+    int n=4;
+    typedef int TMat [MAX_DIM][MAX_DIM];
+    TMat A={{1,2,5,1},{2,3,8,0},{3,8,5,1},{4,0,4,1}};
+    int turno=0;
+
+    pthread_mutex_t mutex;
+    pthread_cond_t TocaTurnoFila;
+
+    void *Impr (void *arg)
+        { int i;
+        int f;
+        f=*(int *)arg;
+        pthread_mutex_lock(&mutex);
+
+        while ( turno != f )
+            pthread_cond_wait(&TocaTurnoFila,&mutex);
+
+        printf("Fila %d (Hilo %lu): ", f, pthread_self());
+
+        for (i=0; i<n; i++) printf("%d ", A[f][i]);
+
+        printf("\n");
+        turno++;
+
+        pthread_cond_signal (&TocaTurnoFila);
+        pthread_mutex_unlock(&mutex);
+        pthread_exit(0);
+    }
+
+    int main()
+    {
+        int i,j;
+        int v[MAX_DIM];
+        pthread_t hilo[MAX_DIM];
+
+        pthread_mutex_init(&mutex, NULL);
+        pthread_cond_init(&TocaTurnoFila,NULL);
+
+        for (i=0; i<n; i++)
+            { v[i]=i;
+            pthread_create(&hilo[i], NULL, Impr, (void *)&v[i]);
+        }
+        for (i=0; i<n; i++) pthread_join(hilo[i], NULL);
+
+        pthread_cond_destroy(&TocaTurnoFila);
+        pthread_mutex_destroy(&mutex);
+        exit(0) */
+
+//SOLUCIÓN 1: Se puede solucionar ejecutando un broadcast en vez de un signal para asegurarse de desbloquear al hilo que toca.
+//Porque puede desbloquear al hilo 2 y en realidad es necesario el hilo 1. Con el broadcast se desbloquean todos
+
+//SOLUCIÓN 2: Utilizar un vector de variables de condición de forma que cada hilo espere a su propia variable de condición.
+
+#include <pthread.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+#define MAX_DIM 10
+
+int n=4;
+typedef int TMat [MAX_DIM][MAX_DIM];
+TMat A={{1,2,5,1},{2,3,8,0},{3,8,5,1},{4,0,4,1}};
+int turno=0;
+
+pthread_mutex_t mutex;
+pthread_cond_t TocaTurnoFila[MAX_DIM];
+
+void *Impr (void *arg)
+{ int i;
+    int f;
+    f=*(int *)arg;
+    pthread_mutex_lock(&mutex);
+
+    while ( turno != f )
+        pthread_cond_wait(&TocaTurnoFila[f],&mutex);
+
+    printf("Fila %d (Hilo %lu): ", f, pthread_self());
+
+    for (i=0; i<n; i++) printf("%d ", A[f][i]);
+
+    printf("\n");
+    turno++;
+
+    pthread_cond_signal (&TocaTurnoFila[turno]); //despierta específicamente al hilo del turno siguiente
+    pthread_mutex_unlock(&mutex);
+    pthread_exit(0);
+}
+
+int main()
+{
+    int i,j;
+    int v[MAX_DIM];
+    pthread_t hilo[MAX_DIM];
+
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&TocaTurnoFila[MAX_DIM],NULL);
+
+    for (i=0; i<n; i++)
+    { v[i]=i;
+        pthread_create(&hilo[i], NULL, Impr, (void *)&v[i]);
+    }
+    for (i=0; i<n; i++) pthread_join(hilo[i], NULL);
+
+    pthread_cond_destroy(&TocaTurnoFila);
+    pthread_mutex_destroy(&mutex);
+    exit(0);
+}
+
+
+//EJERCICIO 14
+
+/*14. El programa que aparece m´as abajo crea tantos hilos como n´ucleos (“cores”)
+tiene la m´aquina. Cada hilo ejecuta un determinado c´odigo en un n´ucleo,
+mediante la funci´on ejecuta, y almacena el resultado en un fichero accesible
+por todos los hilos. Modifica este programa para sincronizar el acceso de los
+hilos al fichero que comparten de forma que estos guarden en ´el los resultados
+proporcionados por la funci´on ejecuta en el siguiente orden: hilo 0, hilo 1,
+..., hilo num hilos-1, hilo 0, hilo 1, .... Los hilos podr´ıan ejecutar la funci´on
+ejecuta simult´aneamente, cada uno en su respectivo n´ucleo. Por tanto, no
+ser´a necesario sincronizar la ejecuci´on de dicha funi´on entre los hilos.
+
+
+Utiliza mutex y variables de condici´on como herramienta de sincronizaci´on.
+F´ıjate c´omo se crean los hilos en el c´odigo de partida. La implementaci´on
+ha de ser lo m´as eficiente posible. */
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#define N_CORES 8
+
+int num_hilos, fd;
+
+//MODIFICACION
+int turno = 0; //establece el orden
+pthread_mutex_t mutex;
+pthread_cond_t TocaTurno[N_CORES];
+
+int ejecuta (int hilo, int n_core)
+{ int resultado;
+    ... // Ejecuta en n_core un c´odigo y devuelve resultado
+    return resultado;
+}
+
+void escribe_en_fichero (int iteracion, int n_core, int resultado)
+{ ... // Escribe en fd
+}
+
+void *f_hilo(void *indice)
+{ int i, n_core, resultado;
+    n_core = *(int *)indice;
+
+    for (i=0; i<10; i++)
+    {   pthread_mutex_lock(&mutex);
+        while ( turno != n_core )
+            pthread_cond_wait(&TocaTurno[n_core], &mutex);
+
+
+        resultado = ejecuta (i, n_core);
+        escribe_en_fichero (i, n_core, resultado);
+
+        turno;
+        pthread_cond_signal(&TocaTurno[turno]);
+
+        pthread_mutex_unlock(&mutex);
+    }
+
+
+    pthread_exit(0);
+}
+
+int main()
+{ int i, tamanyo, dato, *v;
+
+    pthread_t *mis_hilos;
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&TocaTurno[N_CORES],NULL);
+
+    fd=open("fichero",O_WRONLY);
+    num_hilos = N_CORES;
+
+    v = malloc(num_hilos * sizeof(int));
+    mis_hilos = malloc(num_hilos * sizeof(pthread_t));
+
+    for (i = 0; i < num_hilos; i++)
+    { v[i] = i;
+        pthread_create(&mis_hilos[i], NULL, f_hilo, (void *)&v[i]);
+    }
+
+    for (i = 0; i < num_hilos; i++) {
+        pthread_join(mis_hilos[i], NULL);
+    }
+
+    close(fd);
+
+    pthread_mutex_destroy(&mutex);
+
+    //importante para eliminar todos los elementos de la variable de condicion
+    for (int i = 0; i < N_CORES; i++) {
+        pthread_cond_destroy(&TocaTurno[i]);
+    }
+
+    free(v);
+    free(mis_hilos); //cuando usamos mallocs es importante ponerlo
+
+    exit(0);
+}
