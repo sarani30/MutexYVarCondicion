@@ -743,3 +743,330 @@ int main()
 
     exit(0);
 }
+
+
+//EJERCICIO 15
+
+/*15. Se desea imprimir las tablas de multiplicar del 1 al 10 de tal manera que ´estas
+se muestren respectivamente en 10 columnas consecutivas. Por lo tanto, en
+la primer l´ınea se imprimir´a el primer elemento de cada una de las sucesivas
+tablas (esto es, 1x1, 2x1, ..., 10x1). En la segunda l´ınea se imprimir´a el
+segundo elemento de cada una de las sucesivas tablas (es decir, 1x2, 2x2,
+..., 10x2). Y as´ı hasta llegar a imprimir (en la d´ecima l´ınea) el ´ultimo
+elemento de cada tabla (esto es, 1x10, 2x10, ..., 10x10).
+
+Para llevar esto a cabo se crear´an 10 hilos, uno por tabla, que se ejecutar´an
+concurrentemente. Y la sincronizaci´on entre hilos se realizar´a mediante mu
+tex y variables de condici´on. Todos los hilos ejecutar´an una misma funci´on a
+la que se le pasar´a como argumento el n´umero de su correspondiente tabla.
+El hilo principal finalizar´a cuando se hayan impreso todas las tablas.
+La implementaci´on y la ejecuci´on han de ser lo m´as eficientemente posibles.
+Una posible salida del programa podr´ıa ser la siguiente:
+
+$ tablas_multiplicar
+1x1=1
+2x1=2
+1x2=2
+1x3=3
+...
+2x2=4
+2x3=6
+1x10=10 2x10=20
+$
+... 10x1=10
+... 10x2=20
+... 10x3=30
+... 10x10=100
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#define N_HILOS 10
+
+int turno = 1;
+pthread_mutex_t mutex;
+pthread_cond_t TocaTurno[N_HILOS];
+
+void *multi_hilo(void *arg) {
+
+    int indice, i, resultado;
+
+    indice = *(int *)arg;
+
+    for (i = 1; i <= N_HILOS; i++) {
+        pthread_mutex_lock(&mutex);
+
+        while (turno != indice + 1) {
+            pthread_cond_wait(&TocaTurno[indice],&mutex);
+        }
+
+        //multiplicacion
+        resultado = (indice+1)*i;
+        printf("%dx%d=%d\n", indice + 1, i, resultado);
+
+        pthread_cond_signal(&TocaTurno[turno]);
+        pthread_mutex_unlock(&mutex);
+
+    }
+
+    pthread_exit(0);
+
+}
+
+
+int main() {
+
+    int i, *v;
+
+    pthread_t *hilo;
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&TocaTurno[N_HILOS], NULL);
+
+    //reservar espacio para las variables en función del número de hilos
+
+    hilo = (pthread_t *) malloc(N_HILOS * sizeof(pthread_t));
+    v = (int *) malloc(N_HILOS * sizeof(int));
+
+    for (i = 0; i < N_HILOS; i++) {
+        v[i] = i;
+        pthread_create(&hilo[i], NULL, multi_hilo, (void *) &v[i]);
+    }
+
+    for ( i = 0; i < N_HILOS; i++) {
+        pthread_join(hilo[i], NULL);
+    }
+
+    pthread_mutex_destroy(&mutex);
+
+    for (i = 0; i < N_HILOS; i++) {
+        pthread_cond_destroy(&TocaTurno[i]);
+    }
+
+    free(v);
+    free(hilo);
+    exit(0);
+
+}
+
+//EJERCICIO 16
+
+/*16. Resuelve el ejercicio 2 de las transparencias del tema 3 utilizando una ´unica
+variable de condici´on.
+
+Realizarunprogramaquecreedoshilos:El primerodeellosgenerará los100
+primeros números pares y el segundo los 100 primeros números impares,
+mostrándose todos estos por pantalla con la restricción de que no pueden
+aparecendosnúmerosparesseguidosodosnúmerosimparesseguidos.
+Utilizarmutexyvariablesdecondicióncomoherramientadesincronización.*/
+
+#include <pthread.h>
+#include <stdio.h>
+#define MAX 200
+
+pthread_mutex_t mutex;
+pthread_cond_t esperarNum;
+
+// 0: Le toca al hilo par | 1: Le toca al hilo impar
+int turno = 0;
+
+void *hilo_pares(void *arg) {
+    int i, num_par = 0;
+
+    for (i = 0; i < MAX; i++) {
+        pthread_mutex_lock(&mutex);
+
+        // El hilo par espera mientras sea el turno del impar
+        while (turno != 0) {
+            pthread_cond_wait(&esperarNum, &mutex);
+        }
+
+        printf("%d ", num_par);
+        fflush(stdout);
+        num_par += 2; // Siguiente número par
+
+        // Cede el turno al hilo impar y le notifica
+        turno = 1;
+        pthread_cond_signal(&esperarNum);
+
+        pthread_mutex_unlock(&mutex);
+    }
+
+    pthread_exit(0);
+}
+
+void *hilo_impares(void *arg) {
+    int i, num_impar = 1;
+
+    for (i = 0; i < MAX; i++) {
+        pthread_mutex_lock(&mutex);
+
+        // El hilo impar espera mientras sea el turno del par
+        while (turno != 1) {
+            pthread_cond_wait(&esperarNum, &mutex);
+        }
+
+        printf("%d ", num_impar);
+        fflush(stdout);
+        num_impar += 2; // Siguiente número impar
+
+        // Cede el turno al hilo par y le notifica
+        turno = 0;
+        pthread_cond_signal(&esperarNum);
+
+        pthread_mutex_unlock(&mutex);
+    }
+
+    pthread_exit(0);
+}
+
+int main() {
+
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&esperarNum, NULL);
+    pthread_t hilo1, hilo2;
+
+    pthread_create(&hilo1, NULL, hilo_pares, NULL);
+    pthread_create(&hilo2, NULL, hilo_impares, NULL);
+
+    pthread_join(hilo1, NULL);
+    pthread_join(hilo2, NULL);
+
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&esperarNum);
+    exit(0);
+}
+
+//EJERCICIO 17
+
+/*17. (Examen noviembre 2013) El siguiente programa no funciona correcta
+mente. Analiza lo que debe hacer y soluci´onalo usando mutex y variables de
+condici´on. Se deber´a colocar en la secci´on cr´ıtica (esto es, dentro del mutex)
+s´olo las instrucciones estrictamente imprescindibles. Se valorar´a la eficiencia
+de la soluci´on propuesta.
+
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define MAXBUF 10
+
+int BUF [MAXBUF];
+int valor=0;
+
+void *A (void *arg){
+    int i, j;
+
+    for (i=0; i<MAXBUF; i++)
+        { scanf("%d",&j);
+        BUF[i]=j;
+        valor++;
+    }
+    pthread_exit(0);
+    }
+
+void *B (void *arg){
+    int i, j;
+
+    for (i=0; i<MAXBUF; i++)
+        { j=BUF[i];
+        valor--;
+        printf("Leido %d\n",j);
+    }
+    pthread_exit(0);
+    }
+
+int main(){
+    int v=0;
+
+    pthread_t thread_A, thread_B;
+
+    pthread_create (&thread_A, NULL, A, NULL);
+    pthread_create (&thread_B, NULL, B, NULL);
+
+    pthread_join (thread_A,NULL);
+    pthread_join (thread_B,NULL);
+
+    pthread_exit(0);
+}
+*/
+
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define MAXBUF 10
+
+int BUF [MAXBUF];
+int valor=0;
+
+//mutex
+pthread_mutex_t mutex;
+pthread_cond_t no_Lleno;
+pthread_cond_t no_Vacio;
+
+void *A (void *arg){ //ESCRITOR
+    int i, j;
+
+    for (i=0; i<MAXBUF; i++)
+    {
+        pthread_mutex_lock(&mutex);
+
+        while (valor == MAXBUF) {
+            pthread_cond_wait(&no_Lleno,&mutex);
+        }
+
+        scanf("%d",&j);
+        BUF[i]=j;
+        valor++;
+
+        pthread_cond_signal(&no_Vacio);
+        pthread_mutex_unlock(&mutex);
+    }
+    pthread_exit(0);
+}
+
+void *B (void *arg){ //LECTOR
+    int i, j;
+
+    for (i=0; i<MAXBUF; i++)
+    {
+        pthread_mutex_lock(&mutex);
+        while (valor == 0) {
+            pthread_cond_wait(&no_Vacio,&mutex);
+        }
+        j=BUF[i];
+        valor--;
+        printf("Leido %d\n",j);
+
+        pthread_cond_signal(&no_Lleno);
+        pthread_mutex_unlock(&mutex);
+    }
+    pthread_exit(0);
+}
+
+int main(){
+    int v=0;
+
+    pthread_t thread_A, thread_B;
+
+    //inicializar el mutex y la vc
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&no_Lleno, NULL);
+    pthread_cond_init(&no_Vacio, NULL);
+
+    pthread_create (&thread_A, NULL, A, NULL);
+    pthread_create (&thread_B, NULL, B, NULL);
+
+    pthread_join (thread_A,NULL);
+    pthread_join (thread_B,NULL);
+
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&no_Vacio);
+    pthread_cond_destroy(&no_Lleno);
+    pthread_exit(0);
+}
