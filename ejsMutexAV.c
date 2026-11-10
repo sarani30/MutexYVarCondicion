@@ -459,3 +459,58 @@ hay otro hilo que pueda "robarle" el dato recién producido mientras intenta obt
 
 Sin embargo, siempre es mejora un while.
 */
+
+//EJERCICIO 11
+
+/* 11. Realiza el ejercicio 4 de las trasparencias del tema 3 de la asignatura.*/
+
+/*Dado el código que aparece a continuación, indicar  razonadamente la veracidad
+de las siguientes afirmaciones:
+a)hilo1ehilo2nuncaejecutaránpthread_cond_signal(&cond).
+
+SOLUCIÓN: El hilo (hilo1 o hilo2) que realice el incremento cont = cont + 1 que lleve el contador de 19 a 20 evaluará
+la condición if (cont == MAXCONT) como verdadera (20 == 20) y ejecutará inmediatamente la instrucción
+pthread_cond_signal(&cond) para notificar a hilo3.
+
+b)Antesde la instrucción pthread_mutex_destroy(&mutex)seríanecesaria
+lainstrucciónpthread_cancel(hilo3).
+
+SOLUCIÓN: No será necesario porque el programa principal ya se esperará a que hilo 3 acabe, ya que existe una instrucción
+join. Hilo 1 y 2 no la tienen.
+
+c)Un hilo que ejecute la instrucción pthread_cond_wait(&cond2,&mutex)
+nunca saldrá de la situación de bloqueo y será eliminado por el hilo principal
+con la correpondiente instrucción pthread_cancel
+
+SOLUCIÓN: Verdadero. No existe la condición pthread_cond_signal(&cond2). Por tanto, ningún hilo dentro de esa variable
+de condición, saldrá de ella
+
+d) El funcionamiento del programa sería el mismo si eliminamos de la función
+f_hilo1y2la línea:
+if (cont== MAXCONT) pthread_cond_wait(&cond2,&mutex);
+
+SOLUCIÓN: El funcionamiento no sería el mismo porque entonces todos los hilos, aunque el buffer no esté lleno, entrarían en esa
+condición y al no haber un signal de esa variable de condición, el programa nunca acabaría de ejecutarse.
+
+e) Elprogramanofinalizanunca.
+
+SOLUCIÓN: El programa sí finaliza. Cuando cont llega a 220 y se envía la señal sobre la variable de condición cond, el hilo 3 despierta
+y termina la ejecución. Y cancela hilo 1 e hilo2.
+
+f) La variable  contnunca tendrá un valor superior a 20.
+
+SOLUCIÓN: Verdadero. Porque en el momento en que cont llega a 20, la siguiente vez que cualquier hilo entre en la sección
+crítica, la evaluación if (cont == MAXCONT) resulta cierta y ejecuta pthread_cond_wait(&cond2, &mutex) antes de llegar a
+la instrucción cont = cont + 1. Como ambos hilos se bloquean sucesivamente en cond2 al llegar a 20, la instrucción de
+incremento nunca vuelve a ejecutarse.
+
+g) El funcionamiento del programa sería diferente si en la función f_hilo1y2
+se pusiese la instrucción pthread_mutex_lockjusto antes del fory la
+instrucción pthread_mutex_unlockjusto después del for
+
+SOLUCIÓN: Al colocar la exclusión mutua fuera del bucle for, se destruye la concurrencia e intercalado de iteraciones
+entre hilo1 e hilo2
+
+*/
+
+//EJERCICIO 12
