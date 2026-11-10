@@ -1338,3 +1338,115 @@ int main() {
 
     exit(0);
 }
+
+
+//EJERCICIO 22
+
+/* 22. Sea la soluci´on propuesta en las transparencias del tema 3 para el ejercicio
+3. Modif´ıcala para que incluya, adem´as, la restricci´on de que a lo sumo haya
+5 hilos del mismo tipo accediendo a los datos.*/
+
+#include <pthread.h>
+#include <stdio.h>
+#include <time.h>
+
+#define MaxA   10
+#define MaxB   10
+
+int nA=0, nB=0;
+
+pthread_mutex_t m;
+pthread_cond_t  noprocsA;
+pthread_cond_t noprocsB;
+
+void *f_hiloA(void *arg);
+void *f_hiloB(void *arg);
+
+int main()
+{
+    pthread_t hiloA[MaxA], hiloB[MaxB];
+    int i;
+    time_t t;
+    srandom(time(&t));
+
+    pthread_mutex_init(&m, NULL);
+    pthread_cond_init(&noprocsA,NULL);
+    pthread_cond_init(&noprocsB,NULL);
+
+    for (i=0; i<MaxA; i++)
+        pthread_create(&hiloA[i], NULL, &f_hiloA, NULL);
+
+    for (i=0; i<MaxB; i++)
+        pthread_create(&hiloB[i], NULL, &f_hiloB, NULL);
+
+    for (i=0; i<MaxA; i++) pthread_join(hiloA[i], NULL);
+    for (i=0; i<MaxB; i++) pthread_join(hiloB[i], NULL);
+
+    pthread_cond_destroy(&noprocsA);
+    pthread_cond_destroy(&noprocsB);
+    pthread_mutex_destroy(&m);
+    exit(0);
+}
+
+void *f_hiloA (void *arg)
+{  sleep(random()%5);
+
+    pthread_mutex_lock(&m);
+
+    while (nB> 0 || nA > 5) pthread_cond_wait(&noprocsB,&m);
+
+    nA++;
+
+    printf("(A: %d %d %lu) Accedo a datos\n", nA, nB, pthread_self());
+
+    pthread_mutex_unlock(&m);
+
+    /*Acceso a datos */
+    sleep(random()%3);
+    /* Fin acceso datos */
+
+    pthread_mutex_lock(&m);
+
+    printf("(A: %d %d %lu) Dejo acceso datos\n",nA, nB, pthread_self());
+
+    nA--;
+
+    if (nA == 0)
+    {pthread_cond_broadcast(&noprocsA);
+        printf("\n");}
+
+
+    pthread_mutex_unlock(&m);
+    pthread_exit(0);
+}
+
+void *f_hiloB (void *arg)
+{  sleep(random()%5);
+
+    pthread_mutex_lock(&m);
+
+    while (nA> 0 || nB > 5) pthread_cond_wait(&noprocsA,&m);
+
+    nB++;
+
+    printf("(B: %d %d %lu) Accedo a datos\n",nA,nB,pthread_self());
+
+    pthread_mutex_unlock(&m);
+
+    /*Acceso a datos */
+    sleep(random()%3);
+    /* Fin acceso datos */
+
+    pthread_mutex_lock(&m);
+
+    printf("(B: %d %d %lu) Dejo acceso a datos\n",nA,nB,pthread_self());
+
+    nB--;
+
+    if (nB== 0)
+    {pthread_cond_broadcast(&noprocsB);
+        printf("\n");}
+
+    pthread_mutex_unlock(&m);
+    pthread_exit(0);
+}
