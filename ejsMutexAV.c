@@ -1450,3 +1450,97 @@ void *f_hiloB (void *arg)
     pthread_mutex_unlock(&m);
     pthread_exit(0);
 }
+
+//EJERCICIO 23
+
+/*23. (Examen noviembre 2014) Implementa un programa en lenguaje C que
+cree 10 hilos de tipo “sumador” y otros 10 hilos de tipo “restador”. Los hilos
+sumadores sumar´an uno a una variable global v, realizando cada uno esta
+operaci´on 1000 veces. Los hilos restadores restar´an uno a la variable global
+v y cada uno realizar´a esta operaci´on 1000 veces. Se incluye la restricci´on
+de que el valor de la variable v no puede ser nunca negativo. Utiliza mutex
+y variables de condici´on para sincronizar la ejecuci´on de los hilos.*/
+
+#include <pthread.h>
+#include <stdio.h>
+#include <time.h>
+
+#define HILOS_SUMADOR 10
+#define HILOS_RESTADOR 10
+
+pthread_mutex_t mutex;
+pthread_cond_t cond;
+
+int v = 0;
+
+
+void *Restar(void *arg) {
+    int i;
+
+    for ( i = 0; i < 1000; i++) {
+
+        pthread_mutex_lock(&mutex);
+
+        while (v == 0) {
+            pthread_cond_wait(&cond, &mutex);
+        }
+
+        v--;
+
+        pthread_mutex_unlock(&mutex);
+    }
+    pthread_exit(0);
+
+}
+
+void *Sumar(void *arg) {
+    int i;
+
+    for ( i = 0; i < 1000; i++) {
+
+        pthread_mutex_lock(&mutex);
+
+        v++;
+
+        pthread_cond_signal(&cond)
+
+        pthread_mutex_unlock(&mutex);
+    }
+
+    pthread_exit(0);
+
+}
+
+
+int main() {
+    int i;
+
+    pthread_t *hilosSuma[HILOS_SUMADOR];
+    pthread_t *hilosResta[HILOS_RESTADOR];
+
+    *hilosSuma = (pthread_t *) malloc(sizeof(pthread_t) * HILOS_SUMADOR);
+    *hilosResta = (pthread_t *) malloc(sizeof(pthread_t) * HILOS_RESTADOR);
+
+    pthread_mutex_init(&mutex,NULL);
+    pthread_cond_init(&cond,NULL);
+
+    for (i = 0; i < HILOS_SUMADOR; i++) {
+        pthread_create(&hilosSuma[i], NULL, &Sumar, NULL);
+    }
+
+    for (i = 0; i < HILOS_RESTADOR; i++) {
+        pthread_create(&hilosResta[i], NULL, &Restar, NULL);
+    }
+
+    for (i = 0; i < HILOS_SUMADOR; i++) {
+        pthread_join(hilosSuma[i], NULL);
+    }
+
+    for (i = 0; i < HILOS_RESTADOR; i++) {
+        pthread_join(hilosResta[i], NULL);
+    }
+
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&cond);
+    exit(0);
+}
