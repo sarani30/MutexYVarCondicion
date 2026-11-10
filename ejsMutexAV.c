@@ -1263,6 +1263,7 @@ la eficiencia de la soluci´on propuesta */
 int buffer[MAX_BUFFER]; //array que almacena los elementos
 
 int n_elementos = 0; //elementos actuales del buffer
+int pos_cons = 0; //variable global porque hay más de un consumidor
 
 pthread_cond_t noLleno;
 pthread_cond_t noVacio;
@@ -1293,7 +1294,7 @@ void *Productor(void *arg) {
 }
 
 void *Consumidor(void * arg) {
-    int i, dato, pos = 0;
+    int i, dato;
 
     for (i = 0; i < DATOS; i++) {
 
@@ -1303,8 +1304,8 @@ void *Consumidor(void * arg) {
             pthread_cond_wait(&noVacio, &mutex);
         }
 
-        dato = buffer[pos];
-        pos = (pos + 1) % MAX_BUFFER;
+        dato = buffer[pos_cons];
+        pos_cons = (pos_cons + 1) % MAX_BUFFER;
         n_elementos--;
 
         pthread_cond_signal(&noLleno);
