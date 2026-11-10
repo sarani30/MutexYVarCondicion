@@ -1070,3 +1070,64 @@ int main(){
     pthread_cond_destroy(&no_Lleno);
     pthread_exit(0);
 }
+
+//EJERCICIO 18
+
+/*18. (Examen noviembre 2013) Indica de forma razonada la veracidad o
+falsedad de las siguientes afirmaciones:
+
+(a) El hilo threadA del c´odigo del ejercicio anterior tiene acceso tanto a la
+variable v definida en la funci´on main como a la variable valor definida
+justo antes de la funci´on A.
+
+SOLUCIÓN: Falso, threadA no tiene acceso a v porque es una variable exclusiva de main y tampoco se le pasa como argumento
+
+(b) Cuando se crea un hilo el contador de programa del nuevo hilo apunta
+a la instrucci´on siguiente a la funci´on pthread create con la que fue creado.
+
+SOLUCIÓN: Al crear un hilo con pthread_create, el Contador de Programa (PC) del nuevo hilo se inicializa apuntando a la
+primera instrucción de la función de inicio pasada como parámetro (en el ejercicio anterior, la función A). Es el hilo
+creador (el hilo main) el que continúa ejecutando las instrucciones secuenciales situadas inmediatamente después de
+pthread_create.
+
+(c) Cuando se crea un hilo se le asigna una pila de ejecuci´on diferente a la
+del hilo que lo cre´o.
+
+SOLUCIÓN: Verdadero, cada hilo cuenta con su propia pila de ejecución independiente (stack). Esta pila privada es
+imprescindible para gestionar sus propias variables locales, llamadas a funciones y registros de activación de manera
+aislada frente a otros hilos.
+*/
+
+//EJERCICIO 19
+
+/* 19. (Examen noviembre 2013) Explica qu´e cambios de estado se pueden
+producir en un hilo cuando este ejecuta cada una de las siguientes funciones:
+(a) pthread create ->listo para la ejecución el nuevo hilo. el otro sigue en ejecucion
+(b) pthread self ->no hay cambios de estado, el hilo sigue en ejecución
+(c) pthread cond wait -> pasa de en ejecución a bloqueado
+(d) pthread join -> pasa de ejecución a bloqueado ( invocador) y el hilo indicado pasa de listo a en ejecucion
+*/
+
+
+//EJERCICIO 20
+
+/*20. (Examen enero 2014) Una serie de hilos utilizan simultaneamente un
+fichero. Unos acceden al fichero sin modificarlo y otros, modific´andolo. A
+los primeros hilos les denominaremos lectores y a los segundos, escritores.
+Para acceder al fichero se establecen las siguientes restricciones:
+S´olo un escritor puede tener acceso al fichero al mismo tiempo. Mientras
+el escritor est´e accediendo al fichero, ning´un otro hilo lector o escritor
+podr´a acceder a ´el.
+
+Se permite, sin embargo, que m´ultiples lectores tengan acceso al fichero,
+ya que ellos nunca van a modificar el contenido del mismo.
+Modifica el programa que aparece a continuaci´on para que los hilos lectores
+y escritores sincronicen su ejecuci´on de la forma arriba descrita utilizando
+mutex y variables de condici´on.
+
+No es necesario implementar la lectura y la escritura en el fichero. Estas op
+eraciones se simulan ya en el c´odigo de partida con la funci´on sleep(random()%3).
+Asumir que siempre hay datos para leer en el fichero y espacio suficiente
+para escribir en ´el.
+
+Se valorar´a la eficiencia de la soluci´on propuesta */
