@@ -1544,3 +1544,5 @@ int main() {
     pthread_cond_destroy(&cond);
     exit(0);
 }
+
+//EJERCICIO 24
