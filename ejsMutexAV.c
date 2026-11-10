@@ -1131,3 +1131,114 @@ Asumir que siempre hay datos para leer en el fichero y espacio suficiente
 para escribir en ´el.
 
 Se valorar´a la eficiencia de la soluci´on propuesta */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#define N_HILOS 10
+
+int n_lectores, n_escritores;
+pthread_mutex_t mutex;
+pthread_cond_t cond_Escritores;
+pthread_cond_t cond_Lectores;
+
+// Variables globales para el estado del recurso compartido
+int n_lectores = 0;
+int hay_escritor = 0; // 0: libre, 1: escritor en el fichero
+
+void *f_lector (void *indice)
+{ int i, n_lector, resultado;
+    n_lector = *(int *)indice;
+    sleep(random()%5);
+
+    pthread_mutex_lock(&mutex);
+
+    while (hay_escritor) {
+        pthread_cond_wait(&cond_Lectores, &mutex);
+    }
+
+    n_lectores++;
+    printf("Lector %d va a leer\n",n_lector);
+
+    pthread_mutex_unlock(&mutex);
+
+    sleep(random()%3); /* Simula acceso lectura fichero */
+
+    pthread_mutex_lock(&mutex);
+    printf("Lector %d deja de leer\n",n_lector);
+    n_lectores--;
+
+    // Si es el último lector en salir, notifica al escritor que pudiera estar esperando
+    if (n_lectores == 0) {
+        pthread_cond_signal(&cond_Escritores);
+    }
+
+    pthread_mutex_unlock(&mutex);
+
+    pthread_exit(0);
+}
+
+void *f_escritor (void *indice)
+{ int i, n_escritor, resultado;
+    n_escritor= *(int *)indice;
+    sleep(random()%3);
+
+    pthread_mutex_lock(&mutex);
+
+    while (hay_escritor || n_lectores > 0) {
+        pthread_cond_wait(&cond_Escritores, &mutex);
+    }
+
+    hay_escritor = 1;
+    printf("Escritor %d va a escribir\n",n_escritor);
+
+    pthread_mutex_unlock(&mutex);
+
+    sleep(random()%3); /* Simula acceso escritura fichero */
+
+    pthread_mutex_lock(&mutex);
+
+    printf("Escritor %d deja de escribir\n",n_escritor);
+    hay_escritor = 0;
+
+    // Al salir el escritor, despierta a todos los lectores esperando y a un escritor
+    pthread_cond_broadcast(&cond_Lectores);
+    pthread_cond_signal(&cond_Escritores);
+
+    pthread_mutex_unlock(&mutex);
+
+    pthread_exit(0);
+}
+
+int main()
+{ int i, *v;
+    pthread_t *hilos_lectores, *hilos_escritores;
+    time_t t;
+
+    pthread_mutex_init(&mutex,NULL);
+    pthread_cond_init(&cond_Escritores, NULL);
+    pthread_cond_init(&cond_Lectores, NULL);
+
+    srandom(time(&t));
+    hilos_lectores = malloc(N_HILOS * sizeof(pthread_t));
+    hilos_escritores = malloc(N_HILOS * sizeof(pthread_t));
+    v = malloc(N_HILOS * sizeof(int));
+    for (i = 0; i < N_HILOS; i++)
+    { v[i] = i;
+        pthread_create(&hilos_lectores[i], NULL, f_lector, (void *)&v[i]);
+    }
+    for (i = 0; i < N_HILOS; i++)
+        pthread_create(&hilos_escritores[i], NULL, f_escritor, (void *)i);
+
+    for (i = 0; i < N_HILOS; i++) pthread_join(hilos_lectores[i], NULL);
+    for (i = 0; i < N_HILOS; i++) pthread_join(hilos_escritores[i], NULL);
+
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&cond_Escritores);
+    pthread_cond_destroy(&cond_Lectores);
+    exit(0);
+}
