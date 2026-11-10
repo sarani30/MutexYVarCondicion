@@ -1296,8 +1296,9 @@ void *Productor(void *arg) {
 void *Consumidor(void * arg) {
     int i, dato;
 
-    for (i = 0; i < DATOS; i++) {
-
+    // esto no puede ser porque si hay 20 datos, como hay dos consumidores, consumirán 40 datos
+    // //for (i = 0; i < DATOS; i++) {
+    while (1) {
         pthread_mutex_lock(&mutex);
 
         while (n_elementos == 0) {
