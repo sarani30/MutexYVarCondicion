@@ -1515,11 +1515,11 @@ void *Sumar(void *arg) {
 int main() {
     int i;
 
-    pthread_t *hilosSuma[HILOS_SUMADOR];
-    pthread_t *hilosResta[HILOS_RESTADOR];
+    pthread_t *hilosSuma;
+    pthread_t *hilosResta;
 
-    *hilosSuma = (pthread_t *) malloc(sizeof(pthread_t) * HILOS_SUMADOR);
-    *hilosResta = (pthread_t *) malloc(sizeof(pthread_t) * HILOS_RESTADOR);
+    hilosSuma = (pthread_t *) malloc(sizeof(pthread_t) * HILOS_SUMADOR);
+    hilosResta = (pthread_t *) malloc(sizeof(pthread_t) * HILOS_RESTADOR);
 
     pthread_mutex_init(&mutex,NULL);
     pthread_cond_init(&cond,NULL);
@@ -1546,3 +1546,116 @@ int main() {
 }
 
 //EJERCICIO 24
+
+/*24. (Examen enero 2015) Implementa un programa en lenguaje C que cree
+10 hilos de tipo “sumador” y otros 10 hilos de tipo “restador”. Los hilos
+sumadores sumar´an uno a una variable global v, realizando cada uno esta
+operaci´on 1000 veces. Los hilos restadores restar´an uno a la variable global v
+y cada uno realizar´a esta operaci´on 1000 veces. Todos los hilos se ejecutar´an
+concurrentemente. Se incluye la restricci´on de que no se pueden realizar
+dos operaciones iguales de forma consecutiva. O sea, si hace una suma, la
+siguiente operaci´on debe ser una resta y viceversa. Utiliza mutex y variables
+de condici´on para sincronizar la ejecuci´on de los hilos. */
+
+#include <pthread.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#define HILOS_SUMADOR 10
+#define HILOS_RESTADOR 10
+
+int v = 0;
+pthread_mutex_t mutex;
+pthread_cond_t esperar_a_suma;
+pthread_cond_t esperar_a_resta;
+int turno = 0; //0: suma, 1: resta
+
+void *Sumar(void *arg) {
+
+    int i;
+
+    for (i = 0; i < 1000; i++) {
+
+        pthread_mutex_lock(&mutex);
+
+        while (turno != 0) {
+            //turno de resta
+            pthread_cond_wait(&esperar_a_resta,&mutex);
+        }
+
+        //sumamos uno a la variable de condición
+        v++;
+
+        //cambiamos el turno, ahora es el turno de resta
+        turno = 1;
+
+        //desbloqueamos a uno de resta porque ya puede restar
+        pthread_cond_signal(&esperar_a_suma);
+
+        pthread_mutex_unlock(&mutex);
+    }
+
+    pthread_exit(0);
+
+}
+
+void *Restar(void *arg) {
+
+    int i;
+
+    for (i = 0; i < 1000; i++) {
+
+        pthread_mutex_lock(&mutex);
+
+        while (turno == 0) {
+            //le toca a suma
+            pthread_cond_wait(&esperar_a_suma, &mutex);
+        }
+
+        //restar uno
+        v--;
+
+        //cambiar el turno a suma
+        turno = 0;
+
+        //liberar a uno de suma para que pueda sumar
+        pthread_cond_signal(&esperar_a_resta);
+
+        pthread_mutex_unlock(&mutex);
+    }
+
+}
+
+int main() {
+
+    int i;
+
+    pthread_t *hilosSuma[HILOS_SUMADOR];
+    pthread_t *hilosResta[HILOS_RESTADOR];
+
+    pthread_mutex_init(&mutex,NULL);
+    pthread_cond_init(&esperar_a_resta,NULL);
+    pthread_cond_init(&esperar_a_suma,NULL);
+
+    for (i = 0; i < HILOS_SUMADOR; i++) {
+        pthread_create(&hilosSuma[i], NULL, Sumar, NULL);
+    }
+
+    for (i = 0; i < HILOS_RESTADOR; i++) {
+        pthread_create(&hilosResta[i], NULL, Restar, NULL);
+    }
+
+    for (i = 0; i < HILOS_SUMADOR; i++) {
+        pthread_join(hilosSuma[i], NULL);
+    }
+
+    for (i = 0; i < HILOS_RESTADOR; i++) {
+        pthread_join(hilosResta[i], NULL);
+    }
+
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&esperar_a_suma);
+    pthread_cond_destroy(&esperar_a_resta);
+    exit(0);
+
+}
