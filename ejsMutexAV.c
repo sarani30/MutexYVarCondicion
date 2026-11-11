@@ -1630,8 +1630,8 @@ int main() {
 
     int i;
 
-    pthread_t *hilosSuma[HILOS_SUMADOR];
-    pthread_t *hilosResta[HILOS_RESTADOR];
+    pthread_t hilosSuma[HILOS_SUMADOR];
+    pthread_t hilosResta[HILOS_RESTADOR];
 
     pthread_mutex_init(&mutex,NULL);
     pthread_cond_init(&esperar_a_resta,NULL);
@@ -1654,8 +1654,27 @@ int main() {
     }
 
     pthread_mutex_destroy(&mutex);
-    pthread_cond_destroy(&esperar_a_suma);
+    pthread_cond_destroy(&esperar_a_suma); 
     pthread_cond_destroy(&esperar_a_resta);
     exit(0);
 
 }
+
+//EJERCICIO 25
+
+/*25. (Examen junio 2015) Implementa un programa en lenguaje C que cree 10
+hilos de tipo “h1”, otros 10 hilos de tipo “h2” y otros 10 hilos de tipo “h3”.
+Todos los hilos se ejecutar´an concurrentemente. Por otro lado, en el sistema
+hay dos recursos compartidos, A y B. Los hilos h1 utilizar´an el recurso A, los
+hilos h2 utilizar´an el recurso B y los hilos h3 utilizar´an simultaneamente los
+recursos A y B. Tanto el recurso A como el B deben ser usados en exclusi´on
+mutua, esto es, solo un hilo puede acceder de forma simult´anea al recurso.
+Por tanto, un hilo “h1” puede acceder al recurso A mientras un hilo “h2” est´a
+accediendo al recurso B, sin embargo, cuando un hilo “h3” est´e accediendo a
+los recursos A y B los hilos “h1” y “h2” no podr´an acceder respectivamente
+a sus recursos.
+Notas:
+(1) El uso del recurso puede simularse poninendo: sleep(random() % 3);
+(2) Utiliza mutex y variables de condici´on para sincronizar la ejecuci´on de
+los hilos.*/
+
