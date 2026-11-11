@@ -1678,3 +1678,123 @@ Notas:
 (2) Utiliza mutex y variables de condici´on para sincronizar la ejecuci´on de
 los hilos.*/
 
+#define MAX 10 //numero de num_hilos
+//hilos h1 usan A
+//hilos h2 usan B
+//hilos h3 usan A y B
+
+pthread_mutex_t mutex;
+pthread_cond_t cond1;
+pthread_cond_t cond2;
+pthread_cond_t cond3;
+
+int libreA = 1; //si está libre es 1, si no es 0
+int libreB = 1;
+
+void *h1(void *arg) {
+
+    //solo usa A
+    pthread_mutex_lock(&mutex);
+
+    while (!libreA) {
+        pthread_cond_wait(&cond1,&mutex);
+    }
+    libreA = 0;
+    pthread_mutex_unlock(&mutex);
+
+    sleep(random()%3);
+
+    pthread_mutex_lock(&mutex);
+    //cambiar el estado
+    libreA = 1;
+    pthread_cond_signal(&cond1);
+    pthread_cond_signal(&cond3);
+    pthread_mutex_unlock(&mutex);
+
+    pthread_exit(0);
+
+}
+
+void *h2(void *arg) {
+
+    //solo usa B
+    pthread_mutex_lock(&mutex);
+
+    while (!libreB) {
+        pthread_cond_wait(&cond2,&mutex);
+    }
+    libreB = 0;
+    pthread_mutex_unlock(&mutex);
+
+    sleep(random()%3);
+
+    pthread_mutex_lock(&mutex);
+    //cambiar el estado
+    libreB = 1;
+    pthread_cond_signal(&cond2);
+    pthread_cond_signal(&cond3);
+    pthread_mutex_unlock(&mutex);
+
+    pthread_exit(0);
+}
+
+void *h3(void *arg) {
+
+    pthread_mutex_lock(&mutex);
+
+    while (!libreA || !libreB) {
+        pthread_cond_wait(&cond3,&mutex);
+    }
+    libreA = 0;
+    libreB = 0;
+    pthread_mutex_unlock(&mutex);
+
+    sleep(random()%3);
+
+    pthread_mutex_lock(&mutex);
+    libreA = 1;
+    libreB = 1;
+    // Notificar a los 3 tipos de hilos al liberar A y B
+    pthread_cond_signal(&cond1);
+    pthread_cond_signal(&cond2);
+    pthread_cond_signal(&cond3);
+    pthread_mutex_unlock(&mutex);
+
+    pthread_exit(0);
+}
+
+int main() {
+
+    int i;
+
+    pthread_t *h1, *h2, *h3;
+
+    h1 = (pthread_t *) malloc(sizeof(pthread_t) * MAX);
+    h2 = (pthread_t *) malloc(sizeof(pthread_t) * MAX);
+    h3 = (pthread_t *) malloc(sizeof(pthread_t) * MAX);
+
+    pthread_mutex_init(&mutex,NULL);
+    pthread_cond_init(&cond1,NULL);
+    pthread_cond_init(&cond2,NULL);
+    pthread_cond_init(&cond3,NULL);
+
+    //crear los hilos h1,h2,h3
+    for (i = 0; i < MAX; i++) {
+        pthread_create(&h1[i], NULL, h1, NULL);
+        pthread_create(&h2[i], NULL, h2, NULL);
+        pthread_create(&h3[i], NULL, h3, NULL);
+    }
+
+    //ejecutar funciones
+    for (i = 0; i < MAX; i++) {
+        pthread_join(h1[i], NULL);
+        pthread_join(h2[i], NULL);
+        pthread_join(h3[i], NULL);
+    }
+
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&cond1);
+    pthread_cond_destroy(&cond2);
+    pthread_cond_destroy(&cond3);
+    exit(0);
+}
