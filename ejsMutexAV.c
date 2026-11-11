@@ -1942,3 +1942,62 @@ int main() {
 
     pthread_exit(0);
 }
+
+//EJERCICIO 27
+
+/*27. (Examen noviembre 2015)
+ *
+(a) ¿Tienen todos los hilos del programa siguiente acceso a la variable n
+definida en la funci´on main? ¿Y a la variable v definida antes de la
+funci´on f_lector? Justificar la respuesta.
+
+SOLUCIÓN: los hilos tienen acceso a 'n' dentro de la función main.
+A la variable v tienen acceso todos los hilos en todas las funciones porque es una variable global.
+
+(b) Unprogramaenelquesesincroniza la ejecuci´on de varios hilos mediante
+mutex y variables de condici´on funciona correctamente utilizando una
+funci´on pthread_cond_broadcast. ¿Seguir´a funcionando correctamente si se sustituye esa funci´on por una funci´on pthread
+Justificar la respuesta.
+
+SOLUCIÓN: Si hilos con distintas intenciones o condiciones de espera están bloqueados en la misma variable de condición,
+pthread_cond_signal solo despierta a un hilo elegido arbitrariamente por el planificador.
+Si el hilo despertado comprueba su condición dentro del bucle while y ve que su predicado sigue siendo falso, volverá a
+dormirse. La señal se habrá "perdido" y el hilo que realmente podía continuar seguirá dormido indefinidamente,
+provocando un deadlock.
+*/
+
+//EJERCICIO 28
+
+/* (Examen enero 2016) Tres fil´osofos se sientan alrededor de una mesa y
+pasan su vida comiendo y pensando. Cada fil´osofo tiene un plato de sopa
+de fideos y nunca se queda sin sopa en su plato. Por educaci´on se quiere
+que todos los fil´osofos coman a la vez y que piensen a la vez. Por tanto,
+no puede haber fil´osofos pensando cuando haya alguno comiendo ni fil´osofos
+comiendo mientras haya alguno pensando. Resolver el problema usando
+mutex y variables de condici´on de manera que cada fil´osofo sea un hilo.
+El c´odigo que ejecutar´ıa cada hilo fil´osofo para simular los periodos en los
+que come y en los que piensa ser´ıa:*/
+
+#define THREADS 3;
+
+pthread_mutex_t mutex;
+pthread_cond_t cond_comer;
+pthread_cond_t cond_pensar;
+
+int n_comiendo = 0;
+int n_pensando = 0
+
+
+void *filosofos(void *arg) {
+
+    while (1) {
+
+        pthread_mutex_lock(&mutex);
+
+        while (n)
+
+        sleep(random()%10);
+
+        sleep(random()%10);
+    }
+}
