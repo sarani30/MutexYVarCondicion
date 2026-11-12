@@ -1978,26 +1978,66 @@ mutex y variables de condici´on de manera que cada fil´osofo sea un hilo.
 El c´odigo que ejecutar´ıa cada hilo fil´osofo para simular los periodos en los
 que come y en los que piensa ser´ıa:*/
 
-#define THREADS 3;
+#define N 3;
 
 pthread_mutex_t mutex;
-pthread_cond_t cond_comer;
-pthread_cond_t cond_pensar;
+pthread_cond_t cond;
 
-int n_comiendo = 0;
-int n_pensando = 0
+int esperando = 0;
+int turno = 0;
 
-
-void *filosofos(void *arg) {
+void *f_filosofo(void *arg) {
+    int id = *(int *)arg;
 
     while (1) {
-
+        // Barrera inicial para que todos empiecen a comer a la vez
+        // --- BARRERA PARA COMER ---
         pthread_mutex_lock(&mutex);
+        esperando++;
+        if (esperando == N) {
+            // Es el último filósofo en llegar, reinicia el contador,
+            // avanza el turno y despierta al resto.
+            esperando = 0;
+            turno++;
+            pthread_cond_broadcast(&cond);
+        } else {
+            // Se bloquea hasta que el turno cambie (lleguen todos)
+            int mi_turno = turno;
+            while (turno == mi_turno) {
+                pthread_cond_wait(&cond, &mutex);
+            }
+        }
+        pthread_mutex_unlock(&mutex);
 
-        while (n)
+        printf("Filosofo %d empieza a COMER\n", id);
+        sleep(random() % 10); /* Simula periodo en el que come el filósofo */
+        printf("Filosofo %d termina de comer y espera\n", id);
 
-        sleep(random()%10);
+        // Barrera 1: nadie empieza a pensar hasta que los 3 terminen de comer
+        // --- BARRERA PARA PENSAR ---
+        pthread_mutex_lock(&mutex);
+        esperando++;
+        if (esperando == N) {
+            // Es el último en terminar de comer, prepara la fase de pensar
+            esperando = 0;
+            turno++;
+            pthread_cond_broadcast(&cond);
+        } else {
+            // Espera a que los demás terminen de comer
+            int mi_turno = turno;
+            while (turno == mi_turno) {
+                pthread_cond_wait(&cond, &mutex);
+            }
+        }
+        pthread_mutex_unlock(&mutex);
 
-        sleep(random()%10);
+        printf("Filosofo %d empieza a PENSAR\n", id);
+        sleep(random() % 10); /* Simula periodo en el que piensa el filósofo */
+        printf("Filosofo %d termina de pensar y espera\n", id);
+
+
+
     }
+
+    pthread_exit(0);
 }
