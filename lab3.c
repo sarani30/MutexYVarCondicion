@@ -282,3 +282,205 @@ int main()
 
     exit (0);
 }
+
+
+//EJERCICIO 3
+
+/*3. Diseña un código que cree 10 hilos de tipo H1, 10 hilos de tipo H2, 10 hilos de tipo H3 y 10 hilos de tipo H4.
+ *Todos los hilos se ejecutarán de forma concurrente. Además, existen dos bases de datos compartidas en el sistema:
+ *A y B. Los hilos H1 utilizan la base de datos A, los hilos H2 utilizan la base de datos B, los hilos H3 utilizan
+ *simultáneamente las bases de datos A y B, y los hilos H4 utilizan simultáneamente las bases de datos A y B. Ambas
+ *bases de datos, A y B, deben utilizarse en exclusión mutua; es decir, solo un hilo puede acceder a cada base de datos
+ *de forma simultánea. Por lo tanto, un hilo H1 puede acceder a la base de datos A mientras un hilo H2 accede a la base
+ *de datos B. Sin embargo, cuando un hilo H3 o un hilo H4 esté accediendo a las bases de datos A y B, ningún otro hilo
+ *(de tipo H1, H2, H3 o H4) podrá acceder a ellas.
+
+Implementa un programa en lenguaje C para resolver la especificación propuesta anteriormente utilizando mutex y
+variables de condición. La implementación debe ser lo más eficiente posible.
+
+El uso de una base de datos puede simularse mediante la función `sleep(random() % 3);`.
+
+Una posible salida mostrada por pantalla por el programa podría ser la siguiente, donde los dos números entre paréntesis
+representan la cantidad de hilos que están accediendo actualmente a las bases de datos A y B, respectivamente:
+
+```text
+Thread h3 number 0 (id.976129280) accessing databases A and B (1 1)
+Thread h3 number 0 (id.976129280) releases databases A and B (0 0)
+Thread h4 number 0 (id.967736576) accessing databases A and B (1 1)
+Thread h4 number 0 (id.967736576) releases databases A and B (0 0)
+Thread h1 number 0 (id.959343872) accessing database A (1 0)
+Thread h2 number 0 (id.950951168) accessing database B (1 1)
+Thread h2 number 0 (id.950951168) releases database B (1 0)
+Thread h2 number 1 (id.917380352) accessing database B (1 1)
+Thread h1 number 0 (id.959343872) releases database A (0 1)
+Thread h2 number 1 (id.917380352) releases database B (0 0)
+Thread h3 number 2 (id.810118400) accessing databases A and B (1 1)
+...
+
+``` */
+
+
+#include <pthread.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#define THREADS 10
+pthread_mutex_t mutex;
+pthread_cond_t condA;
+pthread_cond_t condB;
+pthread_cond_t condC;
+
+int baseA = 0; //0: no se usa, 1: se usa
+int baseB = 0; //0: no se usa, 1: se usa
+
+typedef struct {
+    int id;   // Número del 0 al 9
+    int tipo; // 3 para H3, 4 para H4
+} t_param;
+
+void  *h1(void *arg) {
+    int i;
+    int id = *(int *)arg;
+
+    pthread_mutex_lock(&mutex);
+
+    while (baseA == 1) {
+        pthread_cond_wait(&condA, &mutex);
+    }
+    baseA = 1;
+
+    printf("Thread h1 number %d (id.%lu) accessing database A (%d %d)\n",
+           id, pthread_self(), baseA, baseB);
+
+    pthread_mutex_unlock(&mutex);
+
+    sleep(random() % 3);
+
+    pthread_mutex_lock(&mutex);
+
+    baseA = 0;
+    printf("Thread h1 number %d (id.%lu) releases database A (%d %d)\n",
+       id, (unsigned long)pthread_self(), baseA, baseB);
+    pthread_cond_signal(&condA);
+    pthread_cond_signal(&condC);
+
+    pthread_mutex_unlock(&mutex);
+
+
+    pthread_exit(0);
+
+}
+
+void *h2(void *arg) {
+    int i;
+    int id = *(int *)arg;
+
+    pthread_mutex_lock(&mutex);
+
+    while (baseB == 1) {
+        pthread_cond_wait(&condB, &mutex);
+    }
+    baseB = 1;
+
+    printf("Thread h2 number %d (id.%lu) accessing database A (%d %d)\n",
+           id, pthread_self(), baseA, baseB);
+    pthread_mutex_unlock(&mutex);
+
+    sleep(random() % 3);
+
+    pthread_mutex_lock(&mutex);
+
+    baseB = 0;
+    pthread_cond_signal(&condB);
+    pthread_cond_signal(&condC);
+
+    pthread_mutex_unlock(&mutex);
+
+    pthread_exit(0);
+}
+
+void *h34 (void *arg) {
+    int i;
+    t_param param = *(t_param *)arg;
+
+    for (i = 0; i < THREADS; i++) {
+        pthread_mutex_lock(&mutex);
+
+        while (baseA == 1 || baseB == 1) {
+            pthread_cond_wait(&condC, &mutex);
+        }
+        baseA = 1;
+        baseB = 1;
+
+
+        printf("Thread h%d number %d (id.%lu) accessing databases A and B (%d %d)\n",
+            param.tipo, param.id, (unsigned long)pthread_self(), baseA, baseB);
+        pthread_mutex_unlock(&mutex);
+
+        sleep(random() % 3);
+
+        pthread_mutex_lock(&mutex);
+
+        baseA = 0;
+        baseB = 0;
+
+        printf("Thread h%d number %d (id.%lu) releases databases A and B (%d %d)\n",
+           param.tipo, param.id, (unsigned long)pthread_self(), baseA, baseB);
+        pthread_cond_signal(&condA); // Avisa a un H1
+        pthread_cond_signal(&condB); // Avisa a un H2
+        pthread_cond_signal(&condC); // Avisa a otro H3/H4
+
+        pthread_mutex_unlock(&mutex);
+    }
+
+    pthread_exit(0);
+
+}
+
+int main() {
+    int i, v[THREADS];
+    t_param params3[THREADS];
+    t_param params4[THREADS];
+
+    pthread_t h1[THREADS];
+    pthread_t h2[THREADS];
+    pthread_t h3[THREADS];
+    pthread_t h4[THREADS];
+
+    srandom(time(NULL));
+
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&condA, NULL);
+    pthread_cond_init(&condB, NULL);
+    pthread_cond_init(&condC, NULL);
+
+    for (i = 0; i < THREADS; i++) {
+
+        v[i] = i;
+
+        params3[i].id = i;
+        params3[i].tipo = 3;
+
+        params4[i].id = i;
+        params4[i].tipo = 4;
+
+        pthread_create(&h1[i], NULL, h1, (void *) &v[i]);
+        pthread_create(&h2[i], NULL, h2, (void *) &v[i]);
+        pthread_create(&h3[i], NULL, h34, (void *) &v[i]);
+        pthread_create(&h4[i], NULL, h34, (void *) &v[i]);
+    }
+
+    for (i = 0; i < THREADS; i++) {
+        pthread_join(h1[i], NULL);
+        pthread_join(h2[i], NULL);
+        pthread_join(h3[i], NULL);
+        pthread_join(h4[i], NULL);
+    }
+
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&condA);
+    pthread_cond_destroy(&condB);
+    exit(0);
+
+}
