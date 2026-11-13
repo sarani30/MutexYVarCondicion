@@ -151,3 +151,21 @@ int main (int argc, char *argv[]) {
     free(param);
     exit(0);
 }
+
+//EJERCICIO 2
+
+/*2. El código del programa `producer_consumer.c` implementa un problema de productor-consumidor.
+
+El hilo principal crea dos hilos que ejecutan las funciones `produce_numbers` y `count_numbers`, respectivamente. La
+función `produce_numbers`, ejecutada por el productor, genera `TOTAL_NUMBERS` números enteros aleatorios y los almacena
+en un búfer. Este búfer está implementado como un vector (*array*), `numbers`. El hilo consumidor ejecuta la función
+`count_numbers`. Esta función comprueba si cada entero del búfer es un número par o impar y acumula la cantidad total
+de enteros pares generados (`total_even_numbers`) y la cantidad total de enteros impares generados (`total_odd_numbers`).
+Finalmente, el hilo consumidor muestra estos valores por consola.
+
+Asume que el tamaño del búfer es mucho menor que el total de números que se van a producir (y consumir). Por tanto, el
+número de elementos del búfer `numbers` debe ser mucho menor que la cantidad de enteros a producir. Modifica el programa
+`producer_consumer.c` para resolver esta situación utilizando mutex y variables de condición.
+
+Recuerda que el productor y el consumidor no se ejecutan de forma concurrente en el código original del programa
+`producer_consumer.c`. */
