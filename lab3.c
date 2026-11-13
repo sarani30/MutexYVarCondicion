@@ -187,22 +187,23 @@ pthread_mutex_t mutex;
 pthread_cond_t noVacio;
 pthread_cond_t noLleno;
 
-int añadidos = 0;
+int anadidos = 0;
 
 void *produce_numbers(void *arg)
 {
-  int  i;
+  int  i, pos;
 
   for (i=0; i<TOTAL_NUMBERS; i++){
 
+      pos = i % BUFFER;
       pthread_mutex_lock(&mutex);
 
-      while (añadidos == BUFFER) {
+      while (anadidos == BUFFER) {
           pthread_cond_wait(&noLleno, &mutex);
       }
 
       numbers[i] = random() % 100;         // Produce an integer between 0 and 99
-      añadidos++;
+      anadidos++;
       printf("Thread_produce_numbers: Produces in position %d number %d \n",i,numbers[i]);
 
       pthread_cond_signal(&noVacio);
@@ -214,17 +215,19 @@ void *produce_numbers(void *arg)
 
 void *count_numbers(void *arg)
 {
-  int i, total_even_numbers=0, total_odd_numbers=0, dato = null;
+  int i, total_even_numbers=0, total_odd_numbers=0, pos;
 
   for (i=0; i<TOTAL_NUMBERS; i++){
 
+      pos = i % BUFFER;
+
       pthread_mutex_lock(&mutex);
 
-      while (añadidos == 0) {
+      while (anadidos == 0) {
           pthread_cond_wait(&noVacio, &mutex);
       }
 
-        if ((numbers[i]%2) == 0)
+        if ((numbers[pos]%2) == 0)
         {
            total_even_numbers++;
            printf("          Thread_count_numbers: Read in position %d number %d \t(even)   \n", i, numbers[i]);
@@ -233,8 +236,7 @@ void *count_numbers(void *arg)
            printf("          Thread_count_numbers: Read in position %d number %d \t(odd)   \n", i, numbers[i]);
         }
 
-      numbers[i] = dato;
-      añadidos--;
+      anadidos--;
 
       pthread_cond_signal(&noLleno);
       pthread_mutex_unlock(&mutex);
