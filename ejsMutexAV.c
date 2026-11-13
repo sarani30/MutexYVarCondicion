@@ -2069,19 +2069,30 @@ void *hA (void *arg) {
     while (1) {
         pthread_mutex_lock(&mutex);
 
-        while (turno != 0 && turno != 2w) {
+        while (ocupado == 1 || (turno != 0 && turno != 2)) {
             pthread_cond_wait(&condA, &mutex);
         }
 
+        ocupado = 1;
         pthread_mutex_unlock(&mutex);
 
         sleep(random() % 10);
 
         pthread_mutex_lock(&mutex);
 
+        turno++;
+        ocupado = 0;
+        if (turno == 1) {
+            pthread_cond_signal(&condB);
+        } else if (turno == 3) {
+            pthread_cond_signal(&condC);
+        }
 
+        pthread_mutex_unlock(&mutex);
 
     }
+
+    pthread_exit(0);
 }
 
 void *hB (void *arg) {
@@ -2090,15 +2101,24 @@ void *hB (void *arg) {
 
         pthread_mutex_lock(&mutex);
 
-        while (turno != 1) {
+        while (ocupado == 1 || turno != 1) {
             pthread_cond_wait(&condB, &mutex);
         }
 
+        ocupado = 1;
         pthread_mutex_unlock(&mutex);
 
         sleep(random() % 10);
 
+        pthread_mutex_lock(&mutex);
+
+        turno++;
+        ocupado = 0;
+        pthread_cond_signal(&condA);
+        pthread_mutex_unlock(&mutex);
     }
+
+    pthread_exit(0);
 }
 
 void *hC (void *arg) {
@@ -2107,13 +2127,24 @@ void *hC (void *arg) {
 
         pthread_mutex_lock(&mutex);
 
-        while (turno != 3) ´{
-
+        while (ocupado == 1 || turno != 3)  {
+            pthread_cond_wait(&condC, &mutex);
         }
+
+        ocupado = 1;
+        pthread_mutex_unlock(&mutex);
 
         sleep(random() % 10);
 
+        pthread_mutex_lock(&mutex);
+
+        turno = 0;
+        ocupado = 0;
+        pthread_cond_signal(&condA);
+        pthread_mutex_unlock(&mutex);
     }
+
+    pthread_exit(0);
 }
 
 int main() {
