@@ -2041,3 +2041,112 @@ void *f_filosofo(void *arg) {
 
     pthread_exit(0);
 }
+
+//EJERCICIO 29
+
+/*29. (Examen junio 2016) En un sistema hay hilos de tres tipos: A, B y C.
+Concretamente, hay diez hilos de cada tipo. Los 30 hilos se ejecutan de
+forma concurrente y acceden a un recurso compartido en exclusi´on mutua
+siguiendo un orden determinado: ABAC, o sea, primero un hilo A, luego un
+hilo B, luego un hilo A y luego un hilo C. El acceso al recurso se repite de
+forma indefinida siguiendo ese patr´on.
+Implementa un programa en lenguaje C que resuelva el problema planteado
+utilizando mutex y variables de condici´on. El c´odigo que ejecuta cada uno
+de los tres tipos de hilos para simular el acceso al recurso podr´ıa ser:*/
+
+#define MAX 10;
+
+pthread_mutex_t mutex;
+pthread_cond_t condA;
+pthread_cond_t condB;
+pthread_cond_t condC;
+
+int turno = 0; //0: a, 1: b, 2: a, 3: c
+int ocupado = 0;
+
+void *hA (void *arg) {
+
+    while (1) {
+        pthread_mutex_lock(&mutex);
+
+        while (turno != 0 && turno != 2w) {
+            pthread_cond_wait(&condA, &mutex);
+        }
+
+        pthread_mutex_unlock(&mutex);
+
+        sleep(random() % 10);
+
+        pthread_mutex_lock(&mutex);
+
+
+
+    }
+}
+
+void *hB (void *arg) {
+
+    while (1) {
+
+        pthread_mutex_lock(&mutex);
+
+        while (turno != 1) {
+            pthread_cond_wait(&condB, &mutex);
+        }
+
+        pthread_mutex_unlock(&mutex);
+
+        sleep(random() % 10);
+
+    }
+}
+
+void *hC (void *arg) {
+
+    while (1) {
+
+        pthread_mutex_lock(&mutex);
+
+        while (turno != 3) ´{
+
+        }
+
+        sleep(random() % 10);
+
+    }
+}
+
+int main() {
+
+    int i;
+
+    pthread_t a[MAX];
+    pthread_t b[MAX];
+    pthread_t c[MAX];
+
+    pthread_mutex_init(&mutex,NULL);
+    pthread_cond_init(&condA,NULL);
+    pthread_cond_init(&condB,NULL);
+    pthread_cond_init(&condC,NULL);
+
+    for (i = 0; i < MAX; i++) {
+        pthread_create(&a[i], NULL, hA, NULL);
+        pthread_create(&b[i], NULL, hB, NULL);
+        pthread_create(&c[i], NULL, hC, NULL);
+    }
+
+    for (i = 0; i < MAX; i++) {
+        pthread_join(a[i], NULL);
+        pthread_join(b[i], NULL);
+        pthread_join(c[i], NULL);
+    }
+
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&condA);
+    pthread_cond_destroy(&condB);
+    pthread_cond_destroy(&condC);
+
+    exit(0);
+}
+
+
